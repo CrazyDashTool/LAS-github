@@ -1,0 +1,110 @@
+{
+  "id": "github-git-operator",
+  "name": "GitHub Git Operator",
+  "label": "GitHub Git Operator",
+  "version": "0.1.0",
+  "author": "Local Agent Studio",
+  "publisher": "community",
+  "status": "draft",
+  "description": "Browse GitHub repositories, clone repositories into the workspace, inspect git status, and create local commits.",
+  "homepage": "https://github.com/your-name/las-github-git-operator",
+  "repository": "https://github.com/your-name/las-github-git-operator",
+  "categories": ["github", "git", "developer-tools"],
+  "capabilities": ["agent_tool", "connector", "mcp"],
+  "permissions": ["network", "files:read", "files:write", "terminal"],
+  "runtime": {
+    "type": "mcp",
+    "setup": "Requires Git and GitHub CLI installed locally. Click Sign in to run gh auth login --web. Commits are local only; this plugin does not push."
+  },
+  "auth": {
+    "type": "browser_command",
+    "label": "Sign in with GitHub",
+    "command": "gh",
+    "args": ["auth", "login", "--hostname", "github.com", "--web", "--git-protocol", "https"],
+    "checkCommand": "gh",
+    "checkArgs": ["auth", "status", "--hostname", "github.com"]
+  },
+  "mcpServers": [
+    {
+      "name": "github-git-operator",
+      "command": "npx",
+      "args": ["-y", "github:your-name/las-github-git-operator"],
+      "env": {
+        "GITHUB_TOKEN": "",
+        "LAS_WORKSPACE": "${workspacePath}"
+      },
+      "enabled": false
+    }
+  ],
+  "tools": [
+    {
+      "name": "github_list_repos",
+      "description": "List GitHub repositories for the authenticated user or a public owner.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "owner": { "type": "string", "description": "Optional public GitHub user/org. If omitted, uses the authenticated user." },
+          "limit": { "type": "number", "default": 20 }
+        }
+      }
+    },
+    {
+      "name": "git_clone",
+      "description": "Clone a Git repository into the configured workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repoUrl": { "type": "string" },
+          "directory": { "type": "string", "description": "Optional folder name inside workspace." }
+        },
+        "required": ["repoUrl"]
+      }
+    },
+    {
+      "name": "git_status",
+      "description": "Show branch and short git status for a local repository.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repoPath": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "git_commit",
+      "description": "Create a local git commit. This never pushes to a remote.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repoPath": { "type": "string" },
+          "message": { "type": "string" },
+          "addAll": { "type": "boolean", "default": false },
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["message"]
+      }
+    },
+    {
+      "name": "git_log",
+      "description": "Show recent commits for a local repository.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repoPath": { "type": "string" },
+          "limit": { "type": "number", "default": 8 }
+        }
+      }
+    }
+  ],
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "githubToken": { "type": "string", "title": "GitHub token" },
+      "workspaceRoot": { "type": "string", "title": "Workspace root" },
+      "allowCommits": { "type": "boolean", "title": "Allow local commits", "default": true }
+    }
+  }
+}
