@@ -25,9 +25,9 @@ Create a new GitHub repository and upload this folder with `plugin.json`, `packa
 Then update `plugin.json`:
 
 ```json
-"homepage": "https://github.com/<your-name>/las-github-git-operator",
-"repository": "https://github.com/<your-name>/las-github-git-operator",
-"args": ["-y", "github:<your-name>/las-github-git-operator"]
+"homepage": "https://github.com/CrazyDashTool/LAS-github",
+"repository": "https://github.com/CrazyDashTool/LAS-github",
+"args": ["-y", "https://github.com/CrazyDashTool/LAS-github"]
 ```
 
 ## Install In Local Agent Studio
@@ -35,13 +35,13 @@ Then update `plugin.json`:
 After publishing, paste the GitHub repository URL into the Plugins tab:
 
 ```text
-https://github.com/<your-name>/las-github-git-operator
+https://github.com/CrazyDashTool/LAS-github
 ```
 
 LAS will download `plugin.json` and add this MCP server config:
 
 ```text
-npx -y github:<your-name>/las-github-git-operator
+npx -y https://github.com/CrazyDashTool/LAS-github
 ```
 
 Then open Settings -> MCP, set:
