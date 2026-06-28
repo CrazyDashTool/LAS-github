@@ -7,8 +7,8 @@
   "publisher": "community",
   "status": "draft",
   "description": "Browse GitHub repositories, clone repositories into the workspace, inspect git status, and create local commits.",
-  "homepage": "https://github.com/your-name/las-github-git-operator",
-  "repository": "https://github.com/your-name/las-github-git-operator",
+  "homepage": "https://github.com/CrazyDashTool/LAS-github",
+  "repository": "https://github.com/CrazyDashTool/LAS-github",
   "categories": ["github", "git", "developer-tools"],
   "capabilities": ["agent_tool", "connector", "mcp"],
   "permissions": ["network", "files:read", "files:write", "terminal"],
@@ -28,7 +28,7 @@
     {
       "name": "github-git-operator",
       "command": "npx",
-      "args": ["-y", "github:your-name/las-github-git-operator"],
+      "args": ["-y", "github.com/CrazyDashTool/LAS-github"],
       "env": {
         "GITHUB_TOKEN": "",
         "LAS_WORKSPACE": "${workspacePath}"
