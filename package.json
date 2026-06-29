@@ -1,7 +1,7 @@
 {
   "name": "las-github-git-operator",
-  "version": "0.1.0",
-  "description": "Local Agent Studio MCP plugin for GitHub repo browsing, git clone, status, and commits.",
+  "version": "0.1.1",
+  "description": "Local Agent Studio MCP plugin for GitHub repo browsing, clone, status, commits, and push.",
   "type": "commonjs",
   "bin": {
     "las-github-git-operator": "./server.cjs"

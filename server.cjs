@@ -36,7 +36,10 @@ function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args.map(String), {
       cwd: options.cwd || workspaceRoot,
-      env: process.env,
+      env: {
+        ...process.env,
+        ...(options.env || {}),
+      },
       windowsHide: true,
       shell: false,
     });
@@ -53,6 +56,28 @@ function run(command, args, options = {}) {
       resolve({ exitCode, stdout, stderr });
     });
   });
+}
+
+function normalizeRepoUrl(args) {
+  const raw = String(args.repoUrl || args.repository || args.repo || args.url || "").trim();
+  if (!raw) {
+    throw new Error("repoUrl is required.");
+  }
+  if (/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i.test(raw)) {
+    return `https://github.com/${raw}.git`;
+  }
+  if (/^github\.com\//i.test(raw)) {
+    return `https://${raw.replace(/\/$/, "")}.git`;
+  }
+  return raw;
+}
+
+async function gitAuthArgs(repoUrl = "") {
+  const token = await getGitHubToken();
+  if (!token || !/github\.com/i.test(repoUrl)) {
+    return [];
+  }
+  return ["-c", `http.https://github.com/.extraheader=AUTHORIZATION: bearer ${token}`];
 }
 
 async function githubRequest(url) {
@@ -101,17 +126,15 @@ async function listRepos(args) {
 }
 
 async function cloneRepo(args) {
-  const repoUrl = String(args.repoUrl || "").trim();
-  if (!repoUrl) {
-    throw new Error("repoUrl is required.");
-  }
+  const repoUrl = normalizeRepoUrl(args);
   fs.mkdirSync(workspaceRoot, { recursive: true });
   const directory = String(args.directory || "").trim();
   const target = directory ? path.resolve(workspaceRoot, directory) : workspaceRoot;
   if (!insideWorkspace(target)) {
     throw new Error("Clone target is outside LAS_WORKSPACE.");
   }
-  const gitArgs = directory ? ["clone", repoUrl, target] : ["clone", repoUrl];
+  const authArgs = await gitAuthArgs(repoUrl);
+  const gitArgs = directory ? [...authArgs, "clone", repoUrl, target] : [...authArgs, "clone", repoUrl];
   const result = await run("git", gitArgs, { cwd: workspaceRoot });
   if (result.exitCode !== 0) {
     throw new Error(result.stderr || result.stdout || "git clone failed");
@@ -171,6 +194,43 @@ async function gitCommit(args) {
   return jsonText(result.stdout || "Commit created.");
 }
 
+async function gitPush(args) {
+  if (process.env.LAS_ALLOW_PUSH === "false") {
+    throw new Error("Push is disabled by LAS_ALLOW_PUSH=false.");
+  }
+  const repo = resolveRepoPath(args.repoPath);
+  const remote = String(args.remote || "origin").trim();
+  let branch = String(args.branch || "").trim();
+  if (!remote) {
+    throw new Error("remote is required.");
+  }
+  if (!branch) {
+    const currentBranch = await run("git", ["-C", repo, "rev-parse", "--abbrev-ref", "HEAD"], { cwd: repo });
+    if (currentBranch.exitCode !== 0) {
+      throw new Error(currentBranch.stderr || "Could not detect current git branch.");
+    }
+    branch = currentBranch.stdout.trim();
+  }
+  if (!branch || branch === "HEAD") {
+    throw new Error("Could not detect a named branch to push. Pass branch explicitly.");
+  }
+  const gitArgs = ["-C", repo, "push"];
+  const authArgs = await gitAuthArgs("https://github.com/");
+  gitArgs.unshift(...authArgs);
+  if (args.forceWithLease) {
+    gitArgs.push("--force-with-lease");
+  }
+  if (args.setUpstream) {
+    gitArgs.push("-u");
+  }
+  gitArgs.push(remote, branch);
+  const result = await run("git", gitArgs, { cwd: repo });
+  if (result.exitCode !== 0) {
+    throw new Error(result.stderr || result.stdout || "git push failed");
+  }
+  return jsonText(result.stdout || result.stderr || `Pushed ${branch} to ${remote}.`);
+}
+
 const tools = [
   {
     name: "github_list_repos",
@@ -189,10 +249,15 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
-        repoUrl: { type: "string" },
+        repoUrl: {
+          type: "string",
+          description: "Repository URL or owner/name, for example https://github.com/CrazyDashTool/LAS-github or CrazyDashTool/LAS-github.",
+        },
+        repository: { type: "string", description: "Alias for repoUrl." },
+        repo: { type: "string", description: "Alias for repoUrl." },
+        url: { type: "string", description: "Alias for repoUrl." },
         directory: { type: "string" },
       },
-      required: ["repoUrl"],
     },
   },
   {
@@ -207,7 +272,7 @@ const tools = [
   },
   {
     name: "git_commit",
-    description: "Create a local git commit. This never pushes.",
+    description: "Create a local git commit. This does not push unless git_push is called separately.",
     inputSchema: {
       type: "object",
       properties: {
@@ -217,6 +282,20 @@ const tools = [
         paths: { type: "array", items: { type: "string" } },
       },
       required: ["message"],
+    },
+  },
+  {
+    name: "git_push",
+    description: "Push the current branch to a remote. Requires GitHub sign-in or existing git credentials.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        repoPath: { type: "string" },
+        remote: { type: "string", default: "origin" },
+        branch: { type: "string" },
+        setUpstream: { type: "boolean", default: false },
+        forceWithLease: { type: "boolean", default: false },
+      },
     },
   },
   {
@@ -237,6 +316,7 @@ const handlers = {
   git_clone: cloneRepo,
   git_status: gitStatus,
   git_commit: gitCommit,
+  git_push: gitPush,
   git_log: gitLog,
 };
 

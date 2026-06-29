@@ -9,14 +9,13 @@ It can:
 - Show git status
 - Show recent commits
 - Create local git commits
-
-It does **not** push commits.
+- Push commits to a configured remote
 
 ## Requirements
 
 - Git
-- GitHub CLI (`gh`)
 - Node.js/npm for `npx github:<owner>/<repo>`
+- Local Agent Studio handles GitHub sign-in through GitHub Device Flow and passes `GITHUB_TOKEN` to the MCP server.
 
 ## Publish
 
@@ -27,7 +26,7 @@ Then update `plugin.json`:
 ```json
 "homepage": "https://github.com/CrazyDashTool/LAS-github",
 "repository": "https://github.com/CrazyDashTool/LAS-github",
-"args": ["-y", "https://github.com/CrazyDashTool/LAS-github"]
+"args": ["-y", "github:CrazyDashTool/LAS-github"]
 ```
 
 ## Install In Local Agent Studio
@@ -41,7 +40,7 @@ https://github.com/CrazyDashTool/LAS-github
 LAS will download `plugin.json` and add this MCP server config:
 
 ```text
-npx -y https://github.com/CrazyDashTool/LAS-github
+npx -y github:CrazyDashTool/LAS-github
 ```
 
 Then open Settings -> MCP, set:
@@ -49,16 +48,21 @@ Then open Settings -> MCP, set:
 - `LAS_WORKSPACE` is filled automatically by Local Agent Studio
 - `GITHUB_TOKEN` is optional if you use the plugin Sign in button
 - `LAS_ALLOW_COMMITS=false` if you want to block commit creation
+- `LAS_ALLOW_PUSH=false` if you want to block push operations
 
 Then:
 
 1. Open Plugins.
 2. Click `Sign in with GitHub`.
-3. Finish browser login.
+3. Finish the browser/device login.
 4. Enable the MCP server.
 5. Refresh tools.
 
-Now the agent can decide to call `github_list_repos`, `git_clone`, `git_status`, `git_log`, or `git_commit`.
+Now the agent can decide to call `github_list_repos`, `git_clone`, `git_status`, `git_log`, `git_commit`, or `git_push`.
+
+`git_push` is separate from `git_commit`. This keeps the model from pushing changes unless it explicitly chooses the push tool for the user's request.
+
+`git_clone` accepts `repoUrl`, `repository`, `repo`, or `url`. Short GitHub names such as `CrazyDashTool/LAS-github` are converted to HTTPS clone URLs automatically.
 
 ## Local Smoke Test
 
